@@ -7,16 +7,12 @@ import org.apache.commons.lang3.math.NumberUtils
 import org.apache.flink.api.common.serialization.SimpleStringSchema
 import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment, createTypeInformation}
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+import org.apache.flink.table.api.{DataTypes, Schema}
 import org.apache.flink.table.api.bridge.scala.StreamTableEnvironment
 import org.joda.time.LocalDateTime
 import java.net.URLDecoder
 
 object AccessLog {
-
-  case class AnalyticsAccessLog(ts : Long, tss : String = "", userId : Long, eventType : String = "",
-       fromType : String = "", columnType : String = "", grouponId : Long, siteId : Long, partnerId : Long,
-       categoryId : Long, merchandiseId : Long, shareUserId : Long, orderId : Long, activeId : Long,
-       pointIndex : Long, flashKillTabId : Long, liveId : Long, kingkongId : Long, latitude : Double, longitude : Double)
 
   def main(args: Array[String]): Unit = {
     val barPattern = Pattern.compile("\\|");
@@ -32,7 +28,7 @@ object AccessLog {
     val senv = StreamExecutionEnvironment.createLocalEnvironment()
     val stenv = StreamTableEnvironment.create(senv)
     val kafkaConsumer = new FlinkKafkaConsumer[String]("rtdw_ods_analytics_access_log_app", new SimpleStringSchema(), properties)
-    kafkaConsumer.setStartFromGroupOffsets()
+    kafkaConsumer.setStartFromEarliest()
 
     val accessLogSourceStream = senv.addSource(kafkaConsumer).setParallelism(12)
       .name("source_kafka_rtdw_ods_analytics_access_log_app").uid("source_kafka_rtdw_ods_analytics_access_log_app")
@@ -46,7 +42,7 @@ object AccessLog {
         val tss = new LocalDateTime(ts).toString("yyyy-MM-dd HH:mm:ss")
         val params = ampRegex.split(fields(14))
         val map = params.map(equalRegex.split(_)).filter(_.length==2).map(arr => (arr(0), URLDecoder.decode(arr(1).replaceAll("\\\\x", "%"), "UTF-8"))).toMap
-        AnalyticsAccessLog(ts, tss
+        (ts, tss
           , if (map.contains("userid")) map("userid").toLong else 0l
           , if (map.contains("eventType")) map("eventType") else ""
           , if (map.contains("fromType")) map("fromType") else ""
@@ -68,9 +64,39 @@ object AccessLog {
       })
       .name("filter_access_log_reqs").uid("filter_access_log_reqs")
 
-    val table = stenv.fromDataStream(accessLogRecordStream)
+    val schema : Schema = Schema.newBuilder()
+      .column("_1", DataTypes.BIGINT())
+      .column("_2", DataTypes.STRING())
+      .column("_3", DataTypes.BIGINT())
+      .column("_4", DataTypes.STRING())
+      .column("_5", DataTypes.STRING())
+      .column("_6", DataTypes.STRING())
+      .column("_7", DataTypes.BIGINT())
+      .column("_8", DataTypes.BIGINT())
+      .column("_9", DataTypes.BIGINT())
+      .column("_10", DataTypes.BIGINT())
+      .column("_11", DataTypes.BIGINT())
+      .column("_12", DataTypes.BIGINT())
+      .column("_13", DataTypes.BIGINT())
+      .column("_14", DataTypes.BIGINT())
+      .column("_15", DataTypes.BIGINT())
+      .column("_16", DataTypes.BIGINT())
+      .column("_17", DataTypes.BIGINT())
+      .column("_18", DataTypes.BIGINT())
+      .column("_19", DataTypes.DOUBLE())
+      .column("_20", DataTypes.DOUBLE())
+      .build()
 
-    stenv.createTemporaryView("ods_access_log", table)
+//    stenv.createTemporaryView("ods_access_log", accessLogRecordStream)
+
+//    stenv.createTemporaryView(
+//      "ods_access_log",
+//      accessLogRecordStream,
+//      schema)
+
+    stenv.createTemporaryView("ods_access_log", stenv.fromDataStream(accessLogRecordStream)
+      .as("ts", "tss", "userId", "eventType", "fromType", "columnType", "grouponId", "siteId", "partnerId", "categoryId"
+        , "merchandiseId", "shareUserId", "orderId", "activeId", "pointIndex", "flashKillTabId", "liveId", "kingkongId", "latitude", "longitude"))
 
     stenv.executeSql("select * from ods_access_log").print()
   }
