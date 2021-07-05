@@ -1,6 +1,5 @@
 package com.sht.flink
 
-import java.util.regex.Pattern
 import java.util.Properties
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.math.NumberUtils
@@ -14,9 +13,6 @@ import java.net.URLDecoder
 object AccessLog {
 
   def main(args: Array[String]): Unit = {
-    val barPattern = Pattern.compile("\\|");
-    val ampRegex = Pattern.compile("[&]")
-    val equalRegex = Pattern.compile("[=]")
     val properties = new Properties()
     properties.put("bootstrap.servers", "127.0.0.1:9092")
     properties.put("auto.offset.reset", "latest")
@@ -33,14 +29,14 @@ object AccessLog {
       .name("source_kafka_rtdw_ods_analytics_access_log_app").uid("source_kafka_rtdw_ods_analytics_access_log_app")
 
     val accessLogRecordStream = accessLogSourceStream
-      .map((message: String) => barPattern.split(message.replace("%", "")))
+      .map((message: String) => message.replace("%", "").split("\\|"))
       .filter(fields => {fields.length >= 15 && !fields(0).startsWith("127.0.0.1") && fields(1) == "analytics.youhaodongxi.com" && !(fields(5) == "HEAD / HTTP/1.0") && !(fields(5) == "GET / HTTP/1.0") && !fields(5).startsWith("OPTIONS") && StringUtils.isNotEmpty(fields(14))})
       .map(fields => {
         val timestamp = fields(4).replace(".", "")
         val ts = NumberUtils.createLong(timestamp)
         val tss = new LocalDateTime(ts).toString("yyyy-MM-dd HH:mm:ss")
-        val params = ampRegex.split(fields(14))
-        val map = params.map(equalRegex.split(_)).filter(_.length==2).map(arr => (arr(0), URLDecoder.decode(arr(1).replaceAll("\\\\x", "%"), "UTF-8"))).toMap
+        val params = fields(14).split("&")
+        val map = params.map(_.split("=")).filter(_.length==2).map(arr => (arr(0), URLDecoder.decode(arr(1).replaceAll("\\\\x", "%"), "UTF-8"))).toMap
         (ts, tss
           , if (map.contains("userid")) map("userid").toLong else 0l
           , if (map.contains("eventType")) map("eventType") else ""
@@ -63,10 +59,67 @@ object AccessLog {
       })
       .name("filter_access_log_reqs").uid("filter_access_log_reqs")
 
-    stenv.createTemporaryView("ods_access_log", stenv.fromDataStream(accessLogRecordStream)
+    stenv.createTemporaryView("kafka_analytics_access_log_taobao", stenv.fromDataStream(accessLogRecordStream)
       .as("ts", "tss", "userId", "eventType", "fromType", "columnType", "grouponId", "siteId", "partnerId", "categoryId"
         , "merchandiseId", "shareUserId", "orderId", "activeId", "pointIndex", "flashKillTabId", "liveId", "kingkongId", "latitude", "longitude"))
-    stenv.from("ods_access_log").printSchema()
-    stenv.executeSql("select * from ods_access_log").print()
+    stenv.executeSql("" +
+      "CREATE TABLE kafka_analytics_access_log_taobao ( " +
+      "  ts BIGINT, " +
+      "  tss STRING, " +
+      "  userId BIGINT, " +
+      "  eventType STRING, " +
+      "  columnType STRING, " +
+      "  fromType STRING, " +
+      "  grouponId BIGINT, " +
+      "  siteId BIGINT, " +
+      "  siteName STRING, " +
+      "  mainSiteId BIGINT, " +
+      "  mainSiteName STRING, " +
+      "  businessAreaId BIGINT, " +
+      "  businessAreaName STRING, " +
+      "  cityCircleId BIGINT, " +
+      "  cityCircleName STRING, " +
+      "  warCityCircleId BIGINT, " +
+      "  warCityCircleName STRING, " +
+      "  warDepId BIGINT, " +
+      "  warDepName STRING, " +
+      "  warZoneId BIGINT, " +
+      "  warZoneName STRING, " +
+      "  partnerId BIGINT, " +
+      "  categoryId BIGINT, " +
+      "  categoryName STRING, " +
+      "  secCategoryName STRING, " +
+      "  merchandiseId BIGINT, " +
+      "  merchandiseName STRING, " +
+      "  merchandiseAbbr STRING, " +
+      "  shareUserId BIGINT, " +
+      "  orderId BIGINT, " +
+      "  activeId BIGINT, " +
+      "  activeName STRING, " +
+      "  pointIndex BIGINT, " +
+      "  flashKillTabId BIGINT, " +
+      "  liveId BIGINT, " +
+      "  kingkongId BIGINT, " +
+      "  kingkongName STRING, " +
+      "  latitude DOUBLE, " +
+      "  longitude DOUBLE, " +
+      "  procTime AS PROCTIME(), " +
+      "  PRIMARY KEY (siteId) NOT ENFORCED " +
+      ") WITH ( " +
+      "  'connector' = 'upsert-kafka', " +
+      "  'topic' = 'rtdw_dwd_analytics_access_log_taobao', " +
+      "  'properties.bootstrap.servers' = '127.0.0.1:9092', " +
+      "  'properties.enable.auto.commit' = 'false', " +
+      "  'properties.session.timeout.ms' = '90000', " +
+      "  'properties.request.timeout.ms' = '325000', " +
+      "  'key.format' = 'json', " +
+      "  'value.format' = 'json', " +
+      "  'value.json.fail-on-missing-field' = 'false', " +
+      "  'value.json.ignore-parse-errors' = 'true', " +
+      "  'value.json.encode.decimal-as-plain-number' = 'true', " +
+      "  'sink.parallelism' = '4' " +
+      ") " +
+      "")
+    stenv.executeSql("select * from kafka_analytics_access_log_taobao").print()
   }
 }
