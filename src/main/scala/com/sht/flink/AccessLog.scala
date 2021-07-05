@@ -9,6 +9,7 @@ import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.apache.flink.table.api.bridge.scala.StreamTableEnvironment
 import org.joda.time.LocalDateTime
 import java.net.URLDecoder
+import java.time.Duration
 
 object AccessLog {
 
@@ -22,6 +23,9 @@ object AccessLog {
     properties.put("group.id", "AccessLog")
     val senv = StreamExecutionEnvironment.createLocalEnvironment()
     val stenv = StreamTableEnvironment.create(senv)
+
+    stenv.getConfig().setIdleStateRetention(Duration.ofHours(30))
+
     val kafkaConsumer = new FlinkKafkaConsumer[String]("rtdw_ods_analytics_access_log_app", new SimpleStringSchema(), properties)
     kafkaConsumer.setStartFromGroupOffsets()
 
