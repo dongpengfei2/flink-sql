@@ -27,7 +27,7 @@ object AccessLog {
     stenv.getConfig().setIdleStateRetention(Duration.ofHours(30))
 
     val kafkaConsumer = new FlinkKafkaConsumer[String]("rtdw_ods_analytics_access_log_app", new SimpleStringSchema(), properties)
-    kafkaConsumer.setStartFromGroupOffsets()
+    kafkaConsumer.setStartFromEarliest()
 
     val accessLogSourceStream = senv.addSource(kafkaConsumer).setParallelism(12)
       .name("source_kafka_rtdw_ods_analytics_access_log_app").uid("source_kafka_rtdw_ods_analytics_access_log_app")
@@ -63,67 +63,29 @@ object AccessLog {
       })
       .name("filter_access_log_reqs").uid("filter_access_log_reqs")
 
-    stenv.createTemporaryView("kafka_analytics_access_log_taobao", stenv.fromDataStream(accessLogRecordStream)
+    stenv.createTemporaryView("ods_kafka_analytics_access_log_taobao", stenv.fromDataStream(accessLogRecordStream)
       .as("ts", "tss", "userId", "eventType", "fromType", "columnType", "grouponId", "siteId", "partnerId", "categoryId"
         , "merchandiseId", "shareUserId", "orderId", "activeId", "pointIndex", "flashKillTabId", "liveId", "kingkongId", "latitude", "longitude"))
+
     stenv.executeSql("" +
-      "CREATE TABLE kafka_analytics_access_log_taobao ( " +
-      "  ts BIGINT, " +
-      "  tss STRING, " +
-      "  userId BIGINT, " +
-      "  eventType STRING, " +
-      "  columnType STRING, " +
-      "  fromType STRING, " +
-      "  grouponId BIGINT, " +
+      "CREATE TABLE dwd_kafka_analytics_access_log_taobao ( " +
       "  siteId BIGINT, " +
-      "  siteName STRING, " +
-      "  mainSiteId BIGINT, " +
-      "  mainSiteName STRING, " +
-      "  businessAreaId BIGINT, " +
-      "  businessAreaName STRING, " +
-      "  cityCircleId BIGINT, " +
-      "  cityCircleName STRING, " +
-      "  warCityCircleId BIGINT, " +
-      "  warCityCircleName STRING, " +
-      "  warDepId BIGINT, " +
-      "  warDepName STRING, " +
-      "  warZoneId BIGINT, " +
-      "  warZoneName STRING, " +
-      "  partnerId BIGINT, " +
-      "  categoryId BIGINT, " +
-      "  categoryName STRING, " +
-      "  secCategoryName STRING, " +
-      "  merchandiseId BIGINT, " +
-      "  merchandiseName STRING, " +
-      "  merchandiseAbbr STRING, " +
-      "  shareUserId BIGINT, " +
-      "  orderId BIGINT, " +
-      "  activeId BIGINT, " +
-      "  activeName STRING, " +
-      "  pointIndex BIGINT, " +
-      "  flashKillTabId BIGINT, " +
-      "  liveId BIGINT, " +
-      "  kingkongId BIGINT, " +
-      "  kingkongName STRING, " +
-      "  latitude DOUBLE, " +
-      "  longitude DOUBLE, " +
-      "  procTime AS PROCTIME(), " +
-      "  PRIMARY KEY (siteId) NOT ENFORCED " +
+      "  userId BIGINT" +
       ") WITH ( " +
-      "  'connector' = 'upsert-kafka', " +
+      "  'connector' = 'kafka', " +
       "  'topic' = 'rtdw_dwd_analytics_access_log_taobao', " +
       "  'properties.bootstrap.servers' = '127.0.0.1:9092', " +
       "  'properties.enable.auto.commit' = 'false', " +
       "  'properties.session.timeout.ms' = '90000', " +
       "  'properties.request.timeout.ms' = '325000', " +
-      "  'key.format' = 'json', " +
-      "  'value.format' = 'json', " +
-      "  'value.json.fail-on-missing-field' = 'false', " +
-      "  'value.json.ignore-parse-errors' = 'true', " +
-      "  'value.json.encode.decimal-as-plain-number' = 'true', " +
+      "  'format' = 'json', " +
+      "  'json.fail-on-missing-field' = 'false', " +
+      "  'json.ignore-parse-errors' = 'true', " +
+      "  'sink.partitioner' = 'round-robin', " +
       "  'sink.parallelism' = '4' " +
       ") " +
       "")
-    stenv.executeSql("select * from kafka_analytics_access_log_taobao").print()
+
+    stenv.executeSql("insert into dwd_kafka_analytics_access_log_taobao(userId, siteId) select userId, siteId from ods_kafka_analytics_access_log_taobao")
   }
 }
