@@ -24,7 +24,11 @@ under the License.
 	<groupId>com.sht.flink</groupId>
 	<artifactId>flink-sql</artifactId>
 	<version>1.0-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<modules>
+		<module>access-log</module>
+		<module>event-log</module>
+	</modules>
+	<packaging>pom</packaging>
 
 	<name>Flink Quickstart Job</name>
 
