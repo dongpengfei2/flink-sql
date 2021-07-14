@@ -10,7 +10,7 @@ object CsvFormatTest {
     val env = StreamExecutionEnvironment.getExecutionEnvironment
     val tableEnvironment = StreamTableEnvironment.create(env)
 
-    /// 注册函数
+    // 注册函数
     tableEnvironment.createTemporarySystemFunction("SplitQueryParamsAsMap", classOf[SplitQueryParamsAsMap])
 
     // access flink configuration// access flink configuration
