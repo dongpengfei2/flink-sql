@@ -303,5 +303,6 @@ public class EventJsonFormatTest {
 1. key-value存储。将一条事件的多个字段以多行的形式进行存储，类似于列转行。
 2. 采用clickhouse列式存储，动态添加列。
 3. 采用clickhouse的map数据类型存储事件的扩展字段。
+4. 公共字段定义单独的列，扩展字段用json字符串的方式存储。查询用json函数去访问。
 
 大家可以谈谈自己的意见。
