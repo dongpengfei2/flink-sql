@@ -1,7 +1,6 @@
 ## 行为数据分析
 
 ***
-
 ### 简介
 
 大数据处理的数据主要包括行为数据和业务数据。行为数据用来记录用户在一段时间内的行为轨迹，业务数据是指公司业务系统产生的数据，比如电商业务的下单，付费等的数据。
@@ -132,92 +131,93 @@ object AccessLog {
 ```
 package com.sht.flink
 
-import com.sht.flink.udf.SplitQueryParamsAsMap
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import java.util.Properties
+import org.apache.commons.lang3.StringUtils
+import org.apache.commons.lang3.math.NumberUtils
+import org.apache.flink.api.common.serialization.SimpleStringSchema
+import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment, createTypeInformation}
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
 import org.apache.flink.table.api.bridge.scala.StreamTableEnvironment
+import org.joda.time.LocalDateTime
+import java.net.URLDecoder
+import java.time.Duration
 
-object CsvFormatTest {
+object AccessLog {
 
   def main(args: Array[String]): Unit = {
-    val env = StreamExecutionEnvironment.getExecutionEnvironment
-    val tableEnvironment = StreamTableEnvironment.create(env)
+    val properties = new Properties()
+    properties.put("bootstrap.servers", "127.0.0.1:9092")
+    properties.put("auto.offset.reset", "latest")
+    properties.put("enable.auto.commit", "false")
+    properties.put("session.timeout.ms", "120000")
+    properties.put("request.timeout.ms", "180000")
+    properties.put("group.id", "AccessLog")
+    val senv = StreamExecutionEnvironment.createLocalEnvironment()
+    val stenv = StreamTableEnvironment.create(senv)
 
-    // 注册函数
-    tableEnvironment.createTemporarySystemFunction("SplitQueryParamsAsMap", classOf[SplitQueryParamsAsMap])
+    stenv.getConfig().setIdleStateRetention(Duration.ofHours(30))
 
-    // access flink configuration// access flink configuration
-    val configuration = tableEnvironment.getConfig.getConfiguration
-    // set low-level key-value options
-    configuration.setString("table.dynamic-table-options.enabled", "true")
+    val kafkaConsumer = new FlinkKafkaConsumer[String]("rtdw_ods_analytics_access_log_app", new SimpleStringSchema(), properties)
+    kafkaConsumer.setStartFromEarliest()
 
-    tableEnvironment.executeSql("" +
-      "CREATE TABLE kafka_analytics_access_log ( " +
-      "  remote_addr STRING, " +
-      "  host STRING, " +
-      "  request_time STRING, " +
-      "  time_local STRING, " +
-      "  msec STRING, " +
-      "  request STRING, " +
-      "  status STRING, " +
-      "  body_bytes_sent STRING, " +
-      "  http_referer STRING, " +
-      "  http_cookie STRING, " +
-      "  http_user_agent STRING, " +
-      "  http_x_forwarded_for STRING, " +
-      "  upstream_addr STRING, " +
-      "  request_length STRING, " +
-      "  query_string STRING, " +
-      "  procTime AS PROCTIME() " +
-      ") WITH ( " +
-      "  'connector' = 'kafka', " +
-      "  'topic' = 'rtdw_ods_analytics_access_log_app', " +
-      "  'properties.bootstrap.servers' = '127.0.0.1:9092', " +
-      "  'properties.enable.auto.commit' = 'false', " +
-      "  'properties.session.timeout.ms' = '90000', " +
-      "  'properties.request.timeout.ms' = '325000', " +
-      "  'format' = 'csv', " +
-      "  'csv.field-delimiter' = '|', " +
-      "  'csv.ignore-parse-errors' = 'true' " +
-      ") " +
-      "")
+    val accessLogSourceStream = senv.addSource(kafkaConsumer).setParallelism(12)
+      .name("source_kafka_rtdw_ods_analytics_access_log_app").uid("source_kafka_rtdw_ods_analytics_access_log_app")
 
-    tableEnvironment.executeSql("" +
-      "SELECT " +
-      "    ts, " +
-      "    FROM_UNIXTIME(ts / 1000) AS tss, " +
-      "    SUBSTR(FROM_UNIXTIME(ts / 1000), 0, 10) AS tssDay, " +
-      "    CAST(COALESCE(mp['userid'], '-1') AS BIGINT) AS userId, " +
-      "    COALESCE(mp['eventType'], '') AS eventType, " +
-      "    COALESCE(mp['fromType'], '') AS fromType, " +
-      "    COALESCE(mp['columnType'], '') AS columnType, " +
-      "    CAST(COALESCE(mp['site_id'], '-1') AS BIGINT) AS siteId, " +
-      "    CAST(COALESCE(mp['grouponid'], '-1') AS BIGINT) AS grouponId, " +
-      "    CAST(COALESCE(mp['partner_id'], '-1') AS BIGINT) AS partnerId, " +
-      "    CAST(COALESCE(mp['categoryid'], '-1') AS BIGINT) AS categoryId, " +
-      "    CAST(COALESCE(mp['categorySec_id'], '-1') AS BIGINT) AS secCategoryId, " +
-      "    CAST(COALESCE(mp['merchandiseid'], '-1') AS BIGINT) AS merchandiseId, " +
-      "    CAST(COALESCE(mp['share_userid'], '-1') AS BIGINT) AS shareUserId, " +
-      "    CAST(COALESCE(mp['activeid'], '-1') AS BIGINT) AS activeId, " +
-      "    CAST(COALESCE(mp['point_index'], '-1') AS BIGINT) AS pointIndex, " +
-      "    CAST(COALESCE(mp['kingkong_id'], '-1') AS BIGINT) AS kingkongId, " +
-      "    CAST(COALESCE(mp['flashkilltabid'], '-1') AS BIGINT) AS flashKillTabId, " +
-      "    CAST(COALESCE(mp['live_id'], '-1') AS BIGINT) AS liveId, " +
-      "    CAST(COALESCE(mp['orderid'], '-1') AS BIGINT) AS orderId, " +
-      "    CAST(COALESCE(mp['lat'], '-1.0') AS DOUBLE) AS latitude, " +
-      "    CAST(COALESCE(mp['lon'], '-1.0') AS DOUBLE) AS longitude, " +
-      "    COALESCE(mp['couponid'], '') AS couponId, " +
-      "    COALESCE(mp['searchTag'], '') AS searchTag, " +
-      "    COALESCE(mp['to_areaname'], '') AS areaName, " +
-      "    procTime " +
-      "    FROM ( " +
-      "    SELECT  " +
-      "        CAST(REPLACE(msec, '.', '') AS BIGINT) AS ts,  " +
-      "        SplitQueryParamsAsMap(REPLACE(query_string, '%', '')) AS mp, " +
-      "        procTime " +
-      "    FROM kafka_analytics_access_log /*+ OPTIONS('scan.startup.mode'='earliest-offset') */ " +
-      "    WHERE CHAR_LENGTH(query_string) > 1 " +
-      ") t " +
-      "").print()
+    val accessLogRecordStream = accessLogSourceStream
+      .map((message: String) => message.replace("%", "").split("\\|"))
+      .filter(fields => {fields.length >= 15 && !fields(0).startsWith("127.0.0.1") && fields(1) == "analytics.youhaodongxi.com" && !(fields(5) == "HEAD / HTTP/1.0") && !(fields(5) == "GET / HTTP/1.0") && !fields(5).startsWith("OPTIONS") && StringUtils.isNotEmpty(fields(14))})
+      .map(fields => {
+        val timestamp = fields(4).replace(".", "")
+        val ts = NumberUtils.createLong(timestamp)
+        val tss = new LocalDateTime(ts).toString("yyyy-MM-dd HH:mm:ss")
+        val params = fields(14).split("&")
+        val map = params.map(_.split("=")).filter(_.length==2).map(arr => (arr(0), URLDecoder.decode(arr(1).replaceAll("\\\\x", "%"), "UTF-8"))).toMap
+        (ts, tss
+          , if (map.contains("userid")) map("userid").toLong else 0l
+          , if (map.contains("eventType")) map("eventType") else ""
+          , if (map.contains("fromType")) map("fromType") else ""
+          , if (map.contains("columnType")) map("columnType") else ""
+          , if (map.contains("grouponid")) map("grouponid").toLong else 0l
+          , if (map.contains("site_id")) map("site_id").toLong else 0l
+          , if (map.contains("partner_id")) map("partner_id").toLong else 0l
+          , if (map.contains("categorySec_id")) map("categorySec_id").toLong else 0l
+          , if (map.contains("merchandiseId")) map("merchandiseId").toLong else 0l
+          , if (map.contains("share_userid")) map("share_userid").toLong else 0l
+          , if (map.contains("orderid")) map("orderid").toLong else 0l
+          , if (map.contains("activeid")) map("activeid").toLong else 0l
+          , if (map.contains("point_index")) map("point_index").toLong else 0l
+          , if (map.contains("flashkilltabid")) map("flashkilltabid").toLong else 0l
+          , if (map.contains("live_id")) map("live_id").toLong else 0l
+          , if (map.contains("kingkong_id")) map("kingkong_id").toLong else 0l
+          , if (map.contains("lat")) map("lat").toDouble else 0
+          , if (map.contains("lon")) map("lon").toDouble else 0)
+      })
+      .name("filter_access_log_reqs").uid("filter_access_log_reqs")
+
+    stenv.createTemporaryView("ods_kafka_analytics_access_log_taobao", stenv.fromDataStream(accessLogRecordStream)
+      .as("ts", "tss", "userId", "eventType", "fromType", "columnType", "grouponId", "siteId", "partnerId", "categoryId"
+        , "merchandiseId", "shareUserId", "orderId", "activeId", "pointIndex", "flashKillTabId", "liveId", "kingkongId", "latitude", "longitude"))
+
+    stenv.executeSql("""
+      |CREATE TABLE dwd_kafka_analytics_access_log_taobao (
+      |  siteId BIGINT,
+      |  userId BIGINT
+      |) WITH (
+      |  'connector' = 'kafka',
+      |  'topic' = 'rtdw_dwd_analytics_access_log_taobao',
+      |  'properties.bootstrap.servers' = '127.0.0.1:9092',
+      |  'properties.enable.auto.commit' = 'false',
+      |  'properties.session.timeout.ms' = '90000',
+      |  'properties.request.timeout.ms' = '325000',
+      |  'format' = 'json',
+      |  'json.fail-on-missing-field' = 'false',
+      |  'json.ignore-parse-errors' = 'true',
+      |  'sink.partitioner' = 'round-robin',
+      |  'sink.parallelism' = '4'
+      |)
+      """.stripMargin)
+
+    stenv.executeSql("insert into dwd_kafka_analytics_access_log_taobao(userId, siteId) select userId, siteId from ods_kafka_analytics_access_log_taobao")
   }
 }
 ```
@@ -237,55 +237,95 @@ object CsvFormatTest {
 ```
 使用demo
 ```
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+package com.sht.flink
 
-public class EventJsonFormatTest {
-    public static void main(String[] args) {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        StreamTableEnvironment tableEnvironment = StreamTableEnvironment.create(env);
+import com.sht.flink.udf.SplitQueryParamsAsMap
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.table.api.bridge.scala.StreamTableEnvironment
 
-        tableEnvironment.executeSql(" " +
-            " CREATE TABLE sourceTable ( " +
-            "  others STRING METADATA FROM 'value.others', " +
-            "  key STRING, " +
-            "  uid STRING " +
-            " ) WITH ( " +
-            "  'connector' = 'kafka', " +
-            "  'topic' = 'event', " +
-            "  'properties.bootstrap.servers' = '127.0.0.1:9092', " +
-            "  'properties.enable.auto.commit' = 'false', " +
-            "  'properties.session.timeout.ms' = '90000', " +
-            "  'properties.request.timeout.ms' = '325000', " +
-            "  'scan.startup.mode' = 'earliest-offset' , " +
-            "  'value.format' = 'event-json', " +
-            "  'value.event-json.others' = 'others' " +
-            " ) "
-        );
+object CsvFormatTest {
 
-        tableEnvironment.executeSql(" " +
-            " CREATE TABLE sinkTable ( " +
-            "  others STRING, " +
-            "  key STRING, " +
-            "  uid STRING " +
-            " ) WITH ( " +
-            "  'connector' = 'kafka', " +
-            "  'topic' = 'dwd_event', " +
-            "  'properties.bootstrap.servers' = '127.0.0.1:9092', " +
-            "  'properties.enable.auto.commit' = 'false', " +
-            "  'properties.session.timeout.ms' = '90000', " +
-            "  'properties.request.timeout.ms' = '325000', " +
-            "  'value.format' = 'event-json', " +
-            "  'value.event-json.others' = 'others', " +
-            "  'sink.partitioner' = 'round-robin', " +
-            "  'sink.parallelism' = '4' " +
-            " ) "
-        );
+  def main(args: Array[String]): Unit = {
+    val env = StreamExecutionEnvironment.getExecutionEnvironment
+    val tableEnvironment = StreamTableEnvironment.create(env)
 
-//        tableEnvironment.executeSql("select * from sourceTable");
+    // 注册函数
+    tableEnvironment.createTemporarySystemFunction("SplitQueryParamsAsMap", classOf[SplitQueryParamsAsMap])
 
-        tableEnvironment.executeSql("insert into sinkTable(key, uid, others) select key, uid, others from sourceTable");
-    }
+    // access flink configuration// access flink configuration
+    val configuration = tableEnvironment.getConfig.getConfiguration
+    // set low-level key-value options
+    configuration.setString("table.dynamic-table-options.enabled", "true")
+
+    tableEnvironment.executeSql("""
+     |CREATE TABLE kafka_analytics_access_log (
+     |  remote_addr STRING,
+     |  host STRING,
+     |  request_time STRING,
+     |  time_local STRING,
+     |  msec STRING,
+     |  request STRING,
+     |  status STRING,
+     |  body_bytes_sent STRING,
+     |  http_referer STRING,
+     |  http_cookie STRING,
+     |  http_user_agent STRING,
+     |  http_x_forwarded_for STRING,
+     |  upstream_addr STRING,
+     |  request_length STRING,
+     |  query_string STRING,
+     |  procTime AS PROCTIME()
+     |) WITH (
+     |  'connector' = 'kafka',
+     |  'topic' = 'rtdw_ods_analytics_access_log_app',
+     |  'properties.bootstrap.servers' = '127.0.0.1:9092',
+     |  'properties.enable.auto.commit' = 'false',
+     |  'properties.session.timeout.ms' = '90000',
+     |  'properties.request.timeout.ms' = '325000',
+     |  'format' = 'csv',
+     |  'csv.field-delimiter' = '|',
+     |  'csv.ignore-parse-errors' = 'true'
+     |)
+      """.stripMargin)
+
+    tableEnvironment.executeSql("""
+     |SELECT
+     |    ts,
+     |    FROM_UNIXTIME(ts / 1000) AS tss,
+     |    SUBSTR(FROM_UNIXTIME(ts / 1000), 0, 10) AS tssDay,
+     |    CAST(COALESCE(mp['userid'], '-1') AS BIGINT) AS userId,
+     |    COALESCE(mp['eventType'], '') AS eventType,
+     |    COALESCE(mp['fromType'], '') AS fromType,
+     |    COALESCE(mp['columnType'], '') AS columnType,
+     |    CAST(COALESCE(mp['site_id'], '-1') AS BIGINT) AS siteId,
+     |    CAST(COALESCE(mp['grouponid'], '-1') AS BIGINT) AS grouponId,
+     |    CAST(COALESCE(mp['partner_id'], '-1') AS BIGINT) AS partnerId,
+     |    CAST(COALESCE(mp['categoryid'], '-1') AS BIGINT) AS categoryId,
+     |    CAST(COALESCE(mp['categorySec_id'], '-1') AS BIGINT) AS secCategoryId,
+     |    CAST(COALESCE(mp['merchandiseid'], '-1') AS BIGINT) AS merchandiseId,
+     |    CAST(COALESCE(mp['share_userid'], '-1') AS BIGINT) AS shareUserId,
+     |    CAST(COALESCE(mp['activeid'], '-1') AS BIGINT) AS activeId,
+     |    CAST(COALESCE(mp['point_index'], '-1') AS BIGINT) AS pointIndex,
+     |    CAST(COALESCE(mp['kingkong_id'], '-1') AS BIGINT) AS kingkongId,
+     |    CAST(COALESCE(mp['flashkilltabid'], '-1') AS BIGINT) AS flashKillTabId,
+     |    CAST(COALESCE(mp['live_id'], '-1') AS BIGINT) AS liveId,
+     |    CAST(COALESCE(mp['orderid'], '-1') AS BIGINT) AS orderId,
+     |    CAST(COALESCE(mp['lat'], '-1.0') AS DOUBLE) AS latitude,
+     |    CAST(COALESCE(mp['lon'], '-1.0') AS DOUBLE) AS longitude,
+     |    COALESCE(mp['couponid'], '') AS couponId,
+     |    COALESCE(mp['searchTag'], '') AS searchTag,
+     |    COALESCE(mp['to_areaname'], '') AS areaName,
+     |    procTime
+     |    FROM (
+     |    SELECT
+     |        CAST(REPLACE(msec, '.', '') AS BIGINT) AS ts,
+     |        SplitQueryParamsAsMap(REPLACE(query_string, '%', '')) AS mp,
+     |        procTime
+     |    FROM kafka_analytics_access_log /*+ OPTIONS('scan.startup.mode'='earliest-offset') */
+     |    WHERE CHAR_LENGTH(query_string) > 1
+     |) t
+      """.stripMargin).print()
+  }
 }
 ```
 输出结果
@@ -320,3 +360,7 @@ public class EventJsonFormatTest {
 2. 之前大厂一般采用时序数据库存储行为数据，比如：influxdb，优点是不用定义schema，缺点是查询不太方便。
 3. 某些大厂也使用kudu列式数据库，动态修改表结构。
 4. 目前市场上最常用的还是clickhouse列式存储，可以方便的添加列，新版本支持map数据类型，扩展列可以存储到map列中，不再需要动态添加列。
+
+
+### 扩展
+关于flink sql + kafka构建olap查询场景的设想。
