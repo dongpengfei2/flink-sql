@@ -67,24 +67,24 @@ object AccessLog {
       .as("ts", "tss", "userId", "eventType", "fromType", "columnType", "grouponId", "siteId", "partnerId", "categoryId"
         , "merchandiseId", "shareUserId", "orderId", "activeId", "pointIndex", "flashKillTabId", "liveId", "kingkongId", "latitude", "longitude"))
 
-    stenv.executeSql("" +
-      "CREATE TABLE dwd_kafka_analytics_access_log_taobao ( " +
-      "  siteId BIGINT, " +
-      "  userId BIGINT" +
-      ") WITH ( " +
-      "  'connector' = 'kafka', " +
-      "  'topic' = 'rtdw_dwd_analytics_access_log_taobao', " +
-      "  'properties.bootstrap.servers' = '127.0.0.1:9092', " +
-      "  'properties.enable.auto.commit' = 'false', " +
-      "  'properties.session.timeout.ms' = '90000', " +
-      "  'properties.request.timeout.ms' = '325000', " +
-      "  'format' = 'json', " +
-      "  'json.fail-on-missing-field' = 'false', " +
-      "  'json.ignore-parse-errors' = 'true', " +
-      "  'sink.partitioner' = 'round-robin', " +
-      "  'sink.parallelism' = '4' " +
-      ") " +
-      "")
+    stenv.executeSql("""
+      |CREATE TABLE dwd_kafka_analytics_access_log_taobao (
+      |  siteId BIGINT,
+      |  userId BIGINT
+      |) WITH (
+      |  'connector' = 'kafka',
+      |  'topic' = 'rtdw_dwd_analytics_access_log_taobao',
+      |  'properties.bootstrap.servers' = '127.0.0.1:9092',
+      |  'properties.enable.auto.commit' = 'false',
+      |  'properties.session.timeout.ms' = '90000',
+      |  'properties.request.timeout.ms' = '325000',
+      |  'format' = 'json',
+      |  'json.fail-on-missing-field' = 'false',
+      |  'json.ignore-parse-errors' = 'true',
+      |  'sink.partitioner' = 'round-robin',
+      |  'sink.parallelism' = '4'
+      |)
+      """.stripMargin)
 
     stenv.executeSql("insert into dwd_kafka_analytics_access_log_taobao(userId, siteId) select userId, siteId from ods_kafka_analytics_access_log_taobao")
   }
