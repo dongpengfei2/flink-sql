@@ -27,6 +27,7 @@ under the License.
 	<modules>
 		<module>access-log</module>
 		<module>event-log</module>
+		<module>calcite</module>
 	</modules>
 	<packaging>pom</packaging>
 
