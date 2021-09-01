@@ -35,5 +35,9 @@
 - UTF方法无法重用问题。问题发生在自定义UDF解析行为日志，反悔map，外层根据key获取所有字段，但是每次根据key获取的时候都会调用一遍方法，中间结果没有缓存，导致执行效率下降。
   这块目前的解决方法是采用guava cache缓存计算结果，减少调用，后期看社区什么时候会修复这个bug，还有一种方法是采用udtf，把行数据拆分成多列，这块由于我们采用zeppelin作为运行平台，zeppelin不支持udtf，我们项目组长修改了相关源码。
 
-- RocksDB TTL失效问题。偶尔发现线上binlog抽取任务的去重状态不会减少，经过一天一夜排查确认是使用RocksDB状态后端时table.exec.state.ttl参数不生效导致的。
+- RocksDB TTL失效问题。偶然发现线上binlog抽取任务的去重状态不会减少，经过一天一夜排查确认是使用RocksDB状态后端时table.exec.state.ttl参数不生效导致的。
   这个bug比较诡异，可能涉及RocksDB的细节，这个咱们不可能了解，先提ticket给社区了。为了暂时解决问题，先把flink-conf.yaml里的默认状态后端换成了filesystem，重启zeppelin note。
+  
+- 自定义Mysql Catalog。这块由于维表数据存在tidb中，所以通过like语法很容易获取到元数据中的字段信息，方便建表。
+
+- 修改bahir开源项目中redis connector，让其支持flink sql。
