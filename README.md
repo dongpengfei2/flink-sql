@@ -44,3 +44,8 @@
 - 自定义Mysql Catalog。这块由于维表数据存在tidb中，所以通过like语法很容易获取到元数据中的字段信息，方便建表。
 
 - 修改bahir开源项目中redis connector，让其支持flink sql。
+
+- 对象池化和复用
+1. 如果是结构化的数据，可以采用CSV格式批量写入。
+2. 如果非结构化数据，如：json，可以JSON的格式写入，此时一批数据需要拼成一个大的字符串写入，可以采用StringBuilder池化技术加少GC。
+3. 开启对象复用，这样Operator Chain之间数据传递就不用进行深拷贝了。详见源码#CopyingChainingOutput#pushToOperator#serializer.copy#RowDataSerializer#copy
