@@ -6,7 +6,6 @@
 ### 问题：
 
 - 采用Protocol buffer序列化kafka消息，用来代替json处理行为数据松散的数据结构。
-- flink sql处理kafka数据时能否不定义字段，不用针对ddl对字段类型进行检查，直接通过推断获取表的schema。
 - Kafka Schema Registry管理kafka元数据信息，在这里定义完之后别的地方直接用，做到一劳永逸。
 
 
@@ -30,6 +29,10 @@
    当然该方法也会带来额外的问题，就是如果数据倾斜可能处理效率会锐减，还有如果参与分组的key如果很少，有可能很多算子上都没有数据。
    这种场景下有同事也建议加大task manager的内存，增加slot的数量，采用本地jvm缓存的方式来增加维表数据的缓存利用率。
    
+- 修改canal-json format源码
+1. 添加元数据字段binlogType，同于筛选数据。
+2. Option中添加`'canal-json.decode.stream-as-append-only' = 'true'`参数可以使其丢弃Changelog语义，插入和更新全部视为INSERT，可按需使用。主要解决UpsetStream无法Join维表，如果再做一次转运生产ods层数据会显的冗余。
+
 - 零点追数。可以通过reset-offsets kafka topic 的时候指定to-datetime时间到UTC的零点来解决，该方法主要在实时大屏中使用，解决当天数据计算错误时追数问题。
   
 - UTF方法无法重用问题。问题发生在自定义UDF解析行为日志，反悔map，外层根据key获取所有字段，但是每次根据key获取的时候都会调用一遍方法，中间结果没有缓存，导致执行效率下降。
