@@ -58,3 +58,9 @@
 4. 对CPU和内存消耗比较小的程序，比如操作外存多的。可以拆开Operator Chain进行运行，原理就是异步处理，这样能够提高并行度，如果采用async sink进行输出。
 5. Flink某些算子需要显示的注册序列化类型，比如Hypeloglog。FlatMap算子需要在后面采用return的方式显示的指定序列化类型，flink在进行类型推断的时候会用。其他算子可以自动进行类型推断，FlatMap由于返回的是Collecter<T>，这种范型在虚拟机编译时会进行类型擦除，比如List<String>和List<Integer>对JVM来说是同种类型。
 6. Timer使用注意事项。Timer底层存储采用的是最小堆（获取最小值的时间复杂度为O1），如果同一时间注册太多，或者删除太多Timer，就会导致频繁操作最小堆（因为要排序）线程就会夯在onProcessingTime方法中。在实际场景，我们用来统计APP内各个商品的相关数据，压力还好。如果key规模过大引起Timer过期风暴的话，性能确实不行，只能加大并行度，让KeyGroup尽量分散到各个sub-task了。
+
+
+### 注意事项
+1. 创建Kafka流表时，不要在建表语句的WITH区段内指定offset起始位点和消费组ID，而应当在任务中实际消费时使用SQL hints指定。消费组ID一般应与对应的`jobName`相同。TVF中无法使用hints语法，目前只能采用like语法针对每个query创建一个表，然后表中指定group id。
+2. 采用CAST做类型转换时，只能用于事实表，对维表进行转换会报错。
+3. TVF中不能使用WHERE进行过滤，可以采用WITH子句包裹一层进行过滤。
