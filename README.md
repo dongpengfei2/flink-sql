@@ -56,7 +56,7 @@
 2. 对象构成及overhead解释：一个对象有header（对象头）、payment（对象数据）、footer（对象尾）、checkstyle（校验模块）等组成，其实只有payment真正存储数据，其他信息都属于overhead。
 3. Flink POJO类在进行传输时，会序列化为MemorySegment进行传输，一个MemorySegment相当于一个分页内存，采用的是堆外内存。
 4. 对CPU和内存消耗比较小的程序，比如操作外存多的。可以拆开Operator Chain进行运行，原理就是异步处理，这样能够提高并行度，如果采用async sink进行输出。
-5. Flink某些算子需要显示的注册序列化类型，比如Hypeloglog。FlatMap算子需要在后面采用return的方式显示的指定序列化类型，flink在进行类型推断的时候会用。其他算子可以自动进行类型推断，FlatMap由于返回的是Collecter<T>，这种范型在虚拟机编译时会进行类型擦除，比如List<String>和List<Integer>对JVM来说是同种类型。
+5. Flink某些算子需要显示的注册序列化类型，比如Hypeloglog，需要自定义序列化器进行注册。FlatMap算子需要在后面采用return的方式显示的指定序列化类型，flink在进行类型推断的时候会用。其他算子可以自动进行类型推断，FlatMap由于返回的是Collecter<T>，这种范型在虚拟机编译时会进行类型擦除，比如List<String>和List<Integer>对JVM来说是同种类型。
 6. Timer使用注意事项。Timer底层存储采用的是最小堆（获取最小值的时间复杂度为O1），如果同一时间注册太多，或者删除太多Timer，就会导致频繁操作最小堆（因为要排序）线程就会夯在onProcessingTime方法中。在实际场景，我们用来统计APP内各个商品的相关数据，压力还好。如果key规模过大引起Timer过期风暴的话，性能确实不行，只能加大并行度，让KeyGroup尽量分散到各个sub-task了。
 
 

@@ -28,7 +28,8 @@ under the License.
 		<module>access-log</module>
 		<module>event-log</module>
 		<module>calcite</module>
-	</modules>
+        <module>case</module>
+    </modules>
 	<packaging>pom</packaging>
 
 	<name>Flink Quickstart Job</name>
@@ -55,6 +56,7 @@ under the License.
 		<scala.version>2.11.12</scala.version>
 		<log4j.version>2.12.1</log4j.version>
 		<joda-time.version>2.9.9</joda-time.version>
+		<fastjson.version>1.2.62</fastjson.version>
 	</properties>
 
 	<dependencies>
