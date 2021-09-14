@@ -29,7 +29,7 @@ under the License.
 		<module>event-log</module>
 		<module>calcite</module>
         <module>case</module>
-    </modules>
+	</modules>
 	<packaging>pom</packaging>
 
 	<name>Flink Quickstart Job</name>
