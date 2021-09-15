@@ -1,6 +1,6 @@
 ## JVM常用调试工具介绍
 
-1. Linux ps （英文全拼：process status）命令用于显示当前进程的状态
+一、Linux ps （英文全拼：process status）命令用于显示当前进程的状态
 ```
 ps -e : 所有的进程均显示出来
 ps -f : 显示详细信息
@@ -32,7 +32,7 @@ TIME //该进程实际使用CPU运行的时间
 ```
 *注：优化机器资源主要从占用机器cpu和mem高的程序入手*
 
-2. Linux top命令查看正在运行的进程和系统负载信息，包括cpu负载、内存使用、各个进程所占系统资源等
+二、Linux top命令查看正在运行的进程和系统负载信息，包括cpu负载、内存使用、各个进程所占系统资源等
 ```
 d 指定每两次屏幕信息刷新之间的时间间隔。当然用户可以使用s交互命令来改变之。
 p 通过指定监控进程ID来仅仅监控某个进程的状态
@@ -90,7 +90,7 @@ TIME+: 进程使用的cpu时间总计
 COMMAND: 拉起进程的命令
 ```
 
-3. Linux top -H -p pid。查看某个进程内部线程占用情况
+三、Linux top -H -p pid。查看某个进程内部线程占用情况
 ```
 top -H -p 4631
 
@@ -105,10 +105,70 @@ top -H -p 4631
  4787 yarn      20   0 3740852   1.0g 107820 S  0.0  1.6   0:17.17 java 
 ```
 
-4. jps(Java Virtual Machine Process Status Tool) 是java提供的一个显示当前所有java进程pid的命令
+四、jps(Java Virtual Machine Process Status Tool) 是java提供的一个显示当前所有java进程pid的命令
 ```
 jps -m	启动时main()的参数
 jps -l	输出主类全名
 jps -v	输出虚拟机进程启动时的参数
 ```
 
+五、jstat(Java Virtual Machine statistics monitoring tool)主要利用JVM内建的指令对Java应用程序的资源和性能进行实时的命令行的监控，包括了对Heap size和垃圾回收状况的监控。可见，Jstat是轻量级的、专门针对JVM的工具，非常适用
+0. jstat -options
+```
+jstat -class (类加载器) 
+jstat -compiler (JIT) 
+jstat -gc (GC堆状态) 
+jstat -gccapacity (各区大小) 
+jstat -gccause (最近一次GC统计和原因) 
+jstat -gcnew (新区统计)
+jstat -gcnewcapacity (新区大小)
+jstat -gcold (老区统计)
+jstat -gcoldcapacity (老区大小)
+jstat -gcpermcapacity (永久区大小)
+jstat -gcutil (GC统计汇总)
+jstat -printcompilation (HotSpot编译统计)
+```
+1. jstat –class<pid> : 显示加载class的数量，及所占空间等信息
+```
+jstat -class 27058 1000 5 : 一秒执行一次，执行5次之后退出
+
+Loaded  Bytes  Unloaded  Bytes     Time   
+  8991 17923.7       35    50.3       2.83
+  8991 17923.7       35    50.3       2.83
+  8991 17923.7       35    50.3       2.83
+  8991 17923.7       35    50.3       2.83
+  8991 17923.7       35    50.3       2.83
+  
+Loaded - 装载的类的数量
+Bytes - 装载类所占用的字节数
+Unloaded - 卸载类的数量
+Bytes - 卸载类的字节数
+Time - 装载和卸载类所花费的时间
+```
+2. jstat -gc <pid>: 可以显示gc的信息，查看gc的次数，及时间
+```
+jstat -gc 27058 1000 5 : 一秒执行一次，执行5次之后退出
+
+ S0C    S1C    S0U    S1U      EC       EU        OC         OU       MC     MU    CCSC   CCSU   YGC     YGCT    FGC    FGCT     GCT   
+34944.0 34944.0 2187.1  0.0   279616.0 156340.1  699072.0   56809.5   57908.0 56899.0 6520.0 6243.6  97000  903.441   4      0.034  903.475
+34944.0 34944.0 2187.1  0.0   279616.0 156842.5  699072.0   56809.5   57908.0 56899.0 6520.0 6243.6  97000  903.441   4      0.034  903.475
+34944.0 34944.0 2187.1  0.0   279616.0 157202.9  699072.0   56809.5   57908.0 56899.0 6520.0 6243.6  97000  903.441   4      0.034  903.475
+34944.0 34944.0 2187.1  0.0   279616.0 189623.8  699072.0   56809.5   57908.0 56899.0 6520.0 6243.6  97000  903.441   4      0.034  903.475
+34944.0 34944.0 2187.1  0.0   279616.0 190124.3  699072.0   56809.5   57908.0 56899.0 6520.0 6243.6  97000  903.441   4      0.034  903.475
+
+S0C - 年轻代中第一个survivor（幸存区）的容量 (字节)
+S1C - 年轻代中第二个survivor（幸存区）的容量 (字节)
+S0U - 年轻代中第一个survivor（幸存区）目前已使用空间 (字节)
+S1U - 年轻代中第二个survivor（幸存区）目前已使用空间 (字节)
+EC  - 年轻代中Eden（伊甸园）的容量 (字节)
+EU  - 年轻代中Eden（伊甸园）目前已使用空间 (字节)
+OC  - Old代的容量 (字节)
+OU  - Old代目前已使用空间 (字节)
+PC  - Perm(持久代)的容量 (字节)
+PU  - Perm(持久代)目前已使用空间 (字节)
+YGC - 从应用程序启动到采样时年轻代中gc次数
+YGCT- 从应用程序启动到采样时年轻代中gc所用时间(s)
+FGC - 从应用程序启动到采样时old代(全gc)gc次数
+FGCT- 从应用程序启动到采样时old代(全gc)gc所用时间(s)
+GCT - 从应用程序启动到采样时gc用的总时间(s)
+```
