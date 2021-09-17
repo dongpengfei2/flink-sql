@@ -112,7 +112,9 @@ jps -l	输出主类全名
 jps -v	输出虚拟机进程启动时的参数
 ```
 
-五、jstat(Java Virtual Machine statistics monitoring tool)主要利用JVM内建的指令对Java应用程序的资源和性能进行实时的命令行的监控，包括了对Heap size和垃圾回收状况的监控。可见，Jstat是轻量级的、专门针对JVM的工具，非常适用
+五、jinfo LVMID，打印配置信息
+
+六、jstat(Java Virtual Machine statistics monitoring tool)主要利用JVM内建的指令对Java应用程序的资源和性能进行实时的命令行的监控，包括了对Heap size和垃圾回收状况的监控。可见，Jstat是轻量级的、专门针对JVM的工具，非常适用
 0. jstat -options
 ```
 jstat -class (类加载器) 
@@ -171,4 +173,45 @@ YGCT- 从应用程序启动到采样时年轻代中gc所用时间(s)
 FGC - 从应用程序启动到采样时old代(全gc)gc次数
 FGCT- 从应用程序启动到采样时old代(全gc)gc所用时间(s)
 GCT - 从应用程序启动到采样时gc用的总时间(s)
+```
+
+七、jstack（Java Stack Trace Tool）主要用于生成java虚拟机当前时刻的线程快照。线程快照是当前java虚拟机内每一条线程正在执行的方法堆栈的集合，生成线程快照的主要目的是定位线程出现长时间停顿的原因，如线程间死锁、死循环、请求外部资源导致的长时间等待等。 线程出现停顿的时候通过jstack来查看各个线程的调用堆栈，就可以知道没有响应的线程到底在后台做什么事情，或者等待什么资源
+0. jstat -options
+```
+jstack -F LVMID		打印线程信息
+jstack -l LVMID		除了堆栈外，显示关于锁的附加信息
+jstack -m LVMID		如果调用本地方法的话，可以显示C/C++的堆栈
+```
+1. jstack -l LVMID，查看死锁情况
+```
+jstack -l 33818
+
+...
+"VM Periodic Task Thread" os_prio=31 tid=0x00007ffaa7827800 nid=0xa703 waiting on condition 
+
+JNI global references: 15
+
+
+Found one Java-level deadlock:
+=============================
+"Thread-1":
+  waiting to lock monitor 0x00007ffaa7810a18 (object 0x000000066ac1e698, a java.lang.Object),
+  which is held by "Thread-0"
+"Thread-0":
+  waiting to lock monitor 0x00007ffaa7813358 (object 0x000000066ac1e6a8, a java.lang.Object),
+  which is held by "Thread-1"
+
+Java stack information for the threads listed above:
+===================================================
+"Thread-1":
+	at com.sample.jvmdebug.DeadLock.run(DeadLock.java:31)
+	- waiting to lock <0x000000066ac1e698> (a java.lang.Object)
+	- locked <0x000000066ac1e6a8> (a java.lang.Object)
+	at java.lang.Thread.run(Thread.java:748)
+"Thread-0":
+	at com.sample.jvmdebug.DeadLock.run(DeadLock.java:19)
+	- waiting to lock <0x000000066ac1e6a8> (a java.lang.Object)
+	- locked <0x000000066ac1e698> (a java.lang.Object)
+	at java.lang.Thread.run(Thread.java:748)
+...
 ```
