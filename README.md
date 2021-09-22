@@ -57,3 +57,48 @@
 2. TVF中无法使用hints语法，目前只能写一段胶水代码，采用like语法针对每个query创建一个表，然后表中指定group id。
 3. 采用CAST做类型转换时，只能用于事实表，对维表进行转换会报错。
 4. TVF中不能使用WHERE进行过滤，可以采用WITH子句包裹一层进行过滤。
+
+### Flink SQL 常用配置项
+作业配置项  
+```
+//作业名称
+yarn.application.name FSQL_RealtimeWarReportDashboard
+//jobmanager内存配置
+jobmanager.memory.process.size  1536m
+//taskmanager内存配置，一个slot建议配置3g
+taskmanager.memory.process.size  5120m
+//slot数
+taskmanager.numberOfTaskSlots  2
+//扩展包
+flink.execution.packages  org.apache.flink:flink-sql-connector-kafka_2.11:1.13.0,org.apache.flink:flink-json:1.13.0
+//udf jar路径
+flink.udf.jars  /var/flink-ext-jars/flink-sql-udf-1.1-production.jar
+//时间语义
+pipeline.time-characteristic  ProcessingTime
+//checkout point时常
+execution.checkpointing.interval  200s
+//checkout point最小时常
+execution.checkpointing.min-pause  20s
+//checkout point超时时间
+execution.checkpointing.timeout  180s
+```
+SQL优化项
+```
+//支持SQL标准中hints的语法
+SET table.dynamic-table-options.enabled=true;
+//TTL时间
+SET table.exec.state.ttl=30h;
+//MiniBatch配置
+SET table.exec.mini-batch.enabled=true;
+SET table.exec.mini-batch.allow-latency=1s;
+//开启两阶段聚合
+SET table.optimizer.agg-phase-strategy=TWO_PHASE;
+//Distinct解热点优化
+SET table.optimizer.distinct-agg.split.enabled=true;
+SET table.optimizer.distinct-agg.split.bucket-num=256;
+```
+若要观察codegen出来的代码，可在log4j.properties文件中加上：
+```
+logger.codegen.name = org.apache.flink.table.runtime.generated
+logger.codegen.level = DEBUG
+```
