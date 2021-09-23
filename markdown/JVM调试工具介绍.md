@@ -239,4 +239,117 @@ sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jstack 9794 | grep 265b
 
 由以上步骤可定位到占用资源最高的线程栈，也就定位了具体那段代码出现问题了。上面示例查出来占用较多的是在GC这块，可通过调试GC参数来解决。
 ```
-八、jmap命令(Java Memory Map)是其中之一。主要用于打印指定Java进程(或核心文件、远程调试服务器)的共享对象内存映射或堆内存细节。
+八、jmap命令(Java Memory Map)是其中之一。主要用于打印指定Java进程(或核心文件、远程调试服务器)的共享对象内存映射或堆内存细节  
+0. jstat -options
+```
+jmap -heap          打印jvm heap的情况  
+jmap -histo         打印jvm heap的直方图。其输出信息包括类名，对象数量，对象占用大小。  
+jmap -histo:live    同上，但是只答应存活对象的情况  
+jmap -permstat      打印permanent generation heap情况  
+jmap -dump:live,format=b,file=heap.hprof    使用hprof二进制形式,输出jvm的heap内容到文件
+```
+1. 查看堆信息
+```
+jmap -heap 9794
+Attaching to process ID 9794, please wait...
+Debugger attached successfully.
+Server compiler detected.
+JVM version is 25.181-b13
+
+using thread-local object allocation.
+Garbage-First (G1) GC with 23 thread(s)
+
+Heap Configuration:
+   MinHeapFreeRatio         = 40
+   MaxHeapFreeRatio         = 70
+   MaxHeapSize              = 2787115008 (2658.0MB)
+   NewSize                  = 1363144 (1.2999954223632812MB)
+   MaxNewSize               = 1671430144 (1594.0MB)
+   OldSize                  = 5452592 (5.1999969482421875MB)
+   NewRatio                 = 2
+   SurvivorRatio            = 8
+   MetaspaceSize            = 21807104 (20.796875MB)
+   CompressedClassSpaceSize = 260046848 (248.0MB)
+   MaxMetaspaceSize         = 268435456 (256.0MB)
+   G1HeapRegionSize         = 1048576 (1.0MB)
+
+Heap Usage:
+G1 Heap:
+   regions  = 2658
+   capacity = 2787115008 (2658.0MB)
+   used     = 2174516344 (2073.780387878418MB)
+   free     = 612598664 (584.219612121582MB)
+   78.02033061995553% used
+G1 Young Generation:
+Eden Space:
+   regions  = 822
+   capacity = 1475346432 (1407.0MB)
+   used     = 861929472 (822.0MB)
+   free     = 613416960 (585.0MB)
+   58.42217484008529% used
+Survivor Space:
+   regions  = 2
+   capacity = 2097152 (2.0MB)
+   used     = 2097152 (2.0MB)
+   free     = 0 (0.0MB)
+   100.0% used
+G1 Old Generation:
+   regions  = 1489
+   capacity = 1309671424 (1249.0MB)
+   used     = 1309441144 (1248.780387878418MB)
+   free     = 230280 (0.21961212158203125MB)
+   99.98241696384451% used
+
+22163 interned Strings occupying 2436200 bytes.
+```
+2. 查看堆中各对象占用大小
+```
+sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jmap -histo:live 9794 | head -n50
+
+ num     #instances         #bytes  class name
+----------------------------------------------
+   1:         71993        8028904  [C
+   2:           105        3442320  [Lakka.dispatch.forkjoin.ForkJoinTask;
+   3:          5273        3008288  [B
+   4:         85269        2728608  java.util.HashMap$Node
+   5:         71888        1725312  java.lang.String
+   6:         14594        1620280  java.lang.Class
+   7:         53600        1286400  java.lang.Long
+   8:         10161        1027456  [Ljava.lang.Object;
+   9:         30062         961984  java.util.concurrent.ConcurrentHashMap$Node
+  10:          7929         958360  [Ljava.util.HashMap$Node;
+  11:         12203         780992  java.nio.DirectByteBuffer
+  12:         12261         686616  org.apache.flink.core.memory.MemorySegment
+  13:         11221         448840  sun.misc.Cleaner
+  14:          7694         369312  java.util.HashMap
+  15:         11213         358816  java.nio.DirectByteBuffer$Deallocator
+  16:         22226         355616  java.lang.Object
+  17:          6165         352808  [I
+  18:          3603         317064  java.lang.reflect.Method
+  19:          7526         240832  java.util.Hashtable$Entry
+  20:           182         211264  [Ljava.util.concurrent.ConcurrentHashMap$Node;
+  21:         12493         199888  java.util.concurrent.atomic.AtomicBoolean
+  22:          3954         158160  java.util.LinkedHashMap$Entry
+  23:           156         102336  org.apache.flink.shaded.netty4.io.netty.util.internal.shaded.org.jctools.queues.MpscArrayQueue
+  24:             3          98352  [Ljava.util.concurrent.ForkJoinTask;
+  25:          4077          97848  java.util.jar.Attributes$Name
+  26:          2411          96440  java.lang.ref.SoftReference
+  27:          3641          87176  [Ljava.lang.Class;
+  28:          5121          81936  java.util.HashMap$EntrySet
+  29:          1256          80384  org.apache.flink.shaded.netty4.io.netty.buffer.PoolSubpage
+  30:          1394          78064  java.lang.invoke.MemberName
+  31:          1308          73248  java.util.LinkedHashMap
+  32:           205          72416  [Ljava.util.Hashtable$Entry;
+  33:           133          69720  [Lorg.apache.flink.runtime.state.heap.CopyOnWriteStateMap$StateMapEntry;
+  34:          4009          64144  java.util.jar.Attributes
+  35:            87          59528  [D
+  36:          2369          56856  java.util.ArrayList
+  37:           854          54656  java.net.URL
+  38:          1308          54592  [Ljava.lang.String;
+```
+2. 以二进制的形式导出堆内存信息
+```
+sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jmap -dump:live,format=b,file=heap.hprof 9794
+Dumping heap to /tmp/hsperfdata_yarn/heap.hprof ...
+Heap dump file created
+```
