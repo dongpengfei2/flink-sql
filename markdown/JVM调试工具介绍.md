@@ -182,7 +182,7 @@ jstack -F LVMID		打印线程信息
 jstack -l LVMID		除了堆栈外，显示关于锁的附加信息
 jstack -m LVMID		如果调用本地方法的话，可以显示C/C++的堆栈
 ```
-1. jstack -l LVMID，查看死锁情况
+1. 利用jstack查看死锁情况
 ```
 jstack -l 33818
 
@@ -215,3 +215,28 @@ Java stack information for the threads listed above:
 	at java.lang.Thread.run(Thread.java:748)
 ...
 ```
+2. 利用jstack查看负载高的线程堆栈  
+```
+a. 查看应用进程中负载高的线程
+
+top -H -p 31424
+                                                                                      
+9819  yarn      20   0 3801676   2.0g  48512 S  0.7  1.6   8:34.24 java                                                                                           
+31521 yarn      20   0 3801676   2.0g  48512 S  0.3  1.6   0:45.64 java                                                                                           
+31534 yarn      20   0 3801676   2.0g  48512 S  0.3  1.6   8:30.38 java                                                                                           
+31555 yarn      20   0 3801676   2.0g  48512 S  0.3  1.6   0:12.13 java                                                                                           
+12683 yarn      20   0 3801676   2.0g  48512 S  0.3  1.6   0:32.69 java                                                                                           
+31424 yarn      20   0 3801676   2.0g  48512 S  0.0  1.6   0:00.00 java
+
+b. 将10近制线程ID转换成16近制
+
+printf  "%x\n" 9819
+
+265b
+
+sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jstack 9794 | grep 265b
+"G1 Concurrent Refinement Thread#23" os_prio=0 tid=0x00007f38d005c800 nid=0x265b runnable 
+
+由以上步骤可定位到占用资源最高的线程栈，也就定位了具体那段代码出现问题了。上面示例查出来占用较多的是在GC这块，可通过调试GC参数来解决。
+```
+八、jmap命令(Java Memory Map)是其中之一。主要用于打印指定Java进程(或核心文件、远程调试服务器)的共享对象内存映射或堆内存细节。
