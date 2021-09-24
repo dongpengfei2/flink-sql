@@ -359,7 +359,7 @@ Heap dump file created
    
 2. Histogram视图  
    ![直方图](image/mat-histogram.png)
-   一般占用较多内存的类型为基本数据类型（char，string，int，long，float）很难找到具体内存泄漏的原因，可以通过Merge Shortest Paths to GC roots 去分析具体原因，一般选择强引用关系去定位
+   一般占用较多内存的类型为基本数据类型（char，string，int，long，float）很难找到具体内存泄漏的原因，可以通过Merge Shortest Paths to GC roots 去分析具体原因，一般选择强引用关系去定位  
    ![GCRoot](image/mat-path-root.png)
    如果占用内存最多的非基本数据类型，需要重点关注，一般会引起内存泄漏
 - shallow size：对象自身中有的内存大小
