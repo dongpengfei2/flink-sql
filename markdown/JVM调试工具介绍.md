@@ -302,7 +302,7 @@ G1 Old Generation:
 
 22163 interned Strings occupying 2436200 bytes.
 ```
-2. 查看堆中各对象占用大小
+2. 查看堆中各对象占用大小  
 ```
 sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jmap -histo:live 9794 | head -n50
 
@@ -347,17 +347,17 @@ sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jmap -histo:live 9794 | head -n
   37:           854          54656  java.net.URL
   38:          1308          54592  [Ljava.lang.String;
 ```
-2. 以二进制的形式导出堆内存信息
+2. 以二进制的形式导出堆内存信息  
 ```
 sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jmap -dump:live,format=b,file=heap.hprof 9794
 Dumping heap to /tmp/hsperfdata_yarn/heap.hprof ...
 Heap dump file created
 ```
 九、MAT(Memory Analysis Tools)是一个分析 Java堆数据的专业工具，用它可以定位内存泄漏的原因  
-1. Overview，概括
+1. Overview，概括  
    ![概括](image/mat-overview.png)
    
-2. Histogram视图
+2. Histogram视图  
    ![直方图](image/mat-histogram.png)
    一般占用较多内存的类型为基本数据类型（char，string，int，long，float）很难找到具体内存泄漏的原因，可以通过Merge Shortest Paths to GC roots 去分析具体原因，一般选择强引用关系去定位
    ![GCRoot](image/mat-path-root.png)
@@ -366,6 +366,12 @@ Heap dump file created
 - retained size：对象自身大小 + 该对象直接或是间接引用对象的shallow size
 - GC Roots：所有的对象引用refer chains的起点
 
-3. Leak Suspects
+3. Leak Suspects  
    ![LeakSuspects](image/mat-leak-suspects.png)
    注：如果启动参数JAVA_MEM_OPTS=-server -Xmx2g -Xms2g -Xmn256m设置为2g,占用内存才28M，疑似不到15M基本可以忽略这个疑似
+   
+十、 问题讨论
+1. CPU爆满的可能场景和解决方案
+2. 有次调试flink程序时出现大量soft reference(软引用)，这种情况主要是什么引起的
+
+结：我主要起个抛砖引玉的作用，目前线上程序压力不大，可能目前没有实际的场景，但是整个流程就是这样的，大家可以下来试试。
