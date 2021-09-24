@@ -353,3 +353,19 @@ sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jmap -dump:live,format=b,file=h
 Dumping heap to /tmp/hsperfdata_yarn/heap.hprof ...
 Heap dump file created
 ```
+九、MAT(Memory Analysis Tools)是一个分析 Java堆数据的专业工具，用它可以定位内存泄漏的原因  
+1. Overview，概括
+   ![概括](image/mat-overview.png)
+   
+2. Histogram视图
+   ![直方图](image/mat-histogram.png)
+   一般占用较多内存的类型为基本数据类型（char，string，int，long，float）很难找到具体内存泄漏的原因，可以通过Merge Shortest Paths to GC roots 去分析具体原因，一般选择强引用关系去定位
+   ![GCRoot](image/mat-path-root.png)
+   如果占用内存最多的非基本数据类型，需要重点关注，一般会引起内存泄漏
+- shallow size：对象自身中有的内存大小
+- retained size：对象自身大小 + 该对象直接或是间接引用对象的shallow size
+- GC Roots：所有的对象引用refer chains的起点
+
+3. Leak Suspects
+   ![LeakSuspects](image/mat-leak-suspects.png)
+   注：如果启动参数JAVA_MEM_OPTS=-server -Xmx2g -Xms2g -Xmn256m设置为2g,占用内存才28M，疑似不到15M基本可以忽略这个疑似
