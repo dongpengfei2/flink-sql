@@ -34,16 +34,16 @@ TIME //该进程实际使用CPU运行的时间
 
 二、Linux top命令查看正在运行的进程和系统负载信息，包括cpu负载、内存使用、各个进程所占系统资源等
 ```
-d 指定每两次屏幕信息刷新之间的时间间隔。当然用户可以使用s交互命令来改变之。
-p 通过指定监控进程ID来仅仅监控某个进程的状态
-s 使top命令在安全模式中运行。这将去除交互命令所带来的潜在危险。
-i 使top不显示任何闲置或者僵死进程。
-c 显示整个命令行而不只是显示命令名。
--n 与 -b 搭配，意义是，需要进行几次 top 的输出结果。
--p 指定某些个 PID 来进行观察监测而已
+top -d 指定每两次屏幕信息刷新之间的时间间隔。当然用户可以使用s交互命令来改变之。
+top -p 通过指定监控进程ID来仅仅监控某个进程的状态。
+top -s 使top命令在安全模式中运行。这将去除交互命令所带来的潜在危险。
+top -i 使top不显示任何闲置或者僵死进程。
+top -c 显示整个命令行而不只是显示命令名。
+top -n 与 -b 搭配，意义是，需要进行几次 top 的输出结果。
+top -p 指定某些个 PID 来进行观察监测而已。
 
-top -d 2 : 每两秒执行一次top的刷新
-top -n 2 : 刷新2次后退出执行
+top -d 2 : 每两秒执行一次top的刷新。
+top -n 2 : 刷新2次后退出执行。
 ```
 基本输出
 ```
@@ -112,7 +112,27 @@ jps -l	输出主类全名
 jps -v	输出虚拟机进程启动时的参数
 ```
 
-五、jinfo LVMID，打印配置信息
+五、jinfo LVMID。可以用来查看 Java 进程运行的 JVM 参数
+0. jstat -options
+```
+jinfo -flag <name>         to print the value of the named VM flag
+jinfo -flag [+|-]<name>    to enable or disable the named VM flag
+jinfo -flag <name>=<value> to set the named VM flag to the given value
+jinfo -flags               to print VM flags
+jinfo -sysprops            to print Java system properties
+jinfo <no option>          to print both of the above
+jinfo -h | -help           to print this help message
+```
+1. 查看jvm的非默认的参数值
+```
+jinfo -flags 9794
+Attaching to process ID 9794, please wait...
+Debugger attached successfully.
+Server compiler detected.
+JVM version is 25.181-b13
+Non-default VM flags: -XX:CICompilerCount=15 -XX:CompressedClassSpaceSize=260046848 -XX:ConcGCThreads=6 -XX:G1HeapRegionSize=1048576 -XX:GCLogFileSize=2097152 -XX:+HeapDumpOnOutOfMemoryError -XX:InitialHeapSize=2787115008 -XX:MarkStackSize=4194304 -XX:MaxDirectMemorySize=499289939 -XX:MaxGCPauseMillis=300 -XX:MaxHeapSize=2787115008 -XX:MaxMetaspaceSize=268435456 -XX:MaxNewSize=1671430144 -XX:MinHeapDeltaBytes=1048576 -XX:NumberOfGCLogFiles=2 -XX:-OmitStackTraceInFastThrow -XX:+PrintGC -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseFastUnorderedTimeStamps -XX:+UseG1GC -XX:+UseGCLogFileRotation 
+Command line:  -Xmx2786360032 -Xms2786360032 -XX:MaxDirectMemorySize=499289939 -XX:MaxMetaspaceSize=268435456 -XX:+UseG1GC -XX:MaxGCPauseMillis=300 -XX:+HeapDumpOnOutOfMemoryError -XX:-OmitStackTraceInFastThrow -Xloggc:/data1/yarn/container-logs/application_1625069693291_0684/container_e16_1625069693291_0684_01_000063/gc.log -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintHeapAtGC -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=2 -XX:GCLogFileSize=2M -Dlog.file=/data1/yarn/container-logs/application_1625069693291_0684/container_e16_1625069693291_0684_01_000063/taskmanager.log -Dlog4j.configuration=file:./log4j.properties -Dlog4j.configurationFile=file:./log4j.properties
+```
 
 六、jstat(Java Virtual Machine statistics monitoring tool)主要利用JVM内建的指令对Java应用程序的资源和性能进行实时的命令行的监控，包括了对Heap size和垃圾回收状况的监控。可见，Jstat是轻量级的、专门针对JVM的工具，非常适用
 0. jstat -options
