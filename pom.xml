@@ -30,6 +30,7 @@ under the License.
 		<module>calcite</module>
         <module>case</module>
         <module>back-pressure</module>
+        <module>two-phase-commit</module>
     </modules>
 	<packaging>pom</packaging>
 
