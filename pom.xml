@@ -31,6 +31,7 @@ under the License.
         <module>case</module>
         <module>back-pressure</module>
         <module>two-phase-commit</module>
+        <module>zeppelin</module>
     </modules>
 	<packaging>pom</packaging>
 
