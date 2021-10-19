@@ -16,14 +16,14 @@
        二次聚合时数据量会明显减少。解决方法是在第一阶段keyby的时候采用（key + 随机数）进行keyby，第二阶段的时候再用key进行keyby二次聚合。
        注意flink为了保证分区的确定性，KeySelector中是不能使用Random生成随机数的，可以采用取message的hash值的方式获取，或者也可以对要分组的字段乘以一个大数加个随机小数进行打散，
        恢复时除以一个大数进行还原，小数部分自动舍弃。  
-    1.2. 三阶段聚合主要处理大key的问题，比如进行distinct求值的时候，如果统计当天的数据，那必须在hastset中存放所有的值，如果又由于数据倾斜问题导致某个hashset很多，状态序列化就会很慢，
+    1.2. 三阶段聚合主要处理大key的问题，比如进行distinct求值的时候，如果统计当天的数据，那必须在hashset中存放所有的值，如果又由于数据倾斜问题导致某个hashset很多，状态序列化就会很慢，
        这时候我们可以首先采用低纬度进行聚合，最后在高纬度进行汇总的方式。  
     1.3. 采用AggregateFunction进行聚合的流程是，首先从状态读取累加器，然后对累加器进行操作，最后写回状态后端，每条数据都要进行一遍这样的操作
-       生产中如果数据倾斜回使这个问题恶化，容易导致job发生反压。MiniBatch 聚合的核心思想是将一组输入的数据缓存在聚合算子内部的缓冲区中。当输入的数据被触发处理时，每个 key 只需一个操作即可访问状态。
+       生产中如果数据倾斜会使这个问题恶化(因为提高并行度也解决不了)，容易导致job发生反压。MiniBatch 聚合的核心思想是将一组输入的数据缓存在聚合算子内部的缓冲区中。当输入的数据被触发处理时，每个 key 只需一个操作即可访问状态。
        这样可以大大减少状态开销并获得更好的吞吐量。需要知道的是Window TVF默认是开启了两阶段聚合和MiniBatch的。
    
 2. ETL过程中提高缓存命中率  
-    2.1. 对事实表【fact】采用datastream API进行补维度时，为了提高缓存效率，同时保证事实数据严格有序，可以约定打入Kafka的数据根据特定维度分区。  
+    2.1. 对事实表【fact】采用datastream API进行补维度时，为了提高缓存效率，同时保证事实数据严格有序，可以约定打入Kafka的数据根据特定维度进行分区。  
     2.2. 采用flink sql做ETL时，需要关联多个维度表【dim】，为了提到LookupJoin Operator中缓存的利用率，可在StreamPhysicalLookupJoin以后自动添加一个hash-by-key Operator，
        当然该方法也会带来额外的问题，就是如果数据倾斜可能处理效率会锐减，还有如果参与分组的key如果很少，有可能很多算子上都没有数据。
        这种场景下有同事也建议加大task manager的内存，增加slot的数量，采用本地jvm缓存的方式来增加维表数据的缓存利用率。
@@ -36,10 +36,10 @@
 5. RocksDB TTL失效问题。偶然发现线上binlog抽取任务的去重状态不会减少，经过一天一夜排查确认是使用RocksDB状态后端时table.exec.state.ttl参数不生效导致的。
   这个bug比较诡异，可能涉及RocksDB的细节，这个咱们不可能了解，先提ticket给社区了。为了暂时解决问题，先把flink-conf.yaml里的默认状态后端换成了filesystem，重启zeppelin note。
   
-6. 对象池化和复用  
+6. 对象池化和复用(sink to clickhouse)  
     6.1. 如果是结构化的数据，可以采用CSV格式批量写入。  
-    6.2. 如果非结构化数据，如：json，可以JSON的格式写入，此时一批数据需要拼成一个大的字符串写入，可以采用StringBuilder池化技术加少GC。  
-    6.3. 开启对象复用，这样Operator Chain之间数据传递就不用进行深拷贝了。详见源码#CopyingChainingOutput#pushToOperator#serializer.copy#RowDataSerializer#copy
+    6.2. 如果非结构化数据，如：json，可以JSON的格式写入，此时一批数据需要拼成一个大的字符串写入，可以采用StringBuilder池化技术减少GC。  
+    6.3. 开启对象复用，这样Operator Chain之间数据传递就不用进行深拷贝了。详见源码#CopyingChainingOutput#pushToOperator#serializer.copy#RowDataSerializer#copy，该优化主要体现着operator chain比较长的情况下，能减少序列化的时间。  
 
 7. 集群升级时save point数据问题。如果对hadoop进行了升级，集群名字发生了变化，首先需要把save point数据拷贝到新的集群，然后修改save point目录中metadata文件中集群的名称，能使其定位到具体的数据。
 
