@@ -404,6 +404,8 @@ Heap dump file created
    解：不会。首先CPU的运算能力远远高于其它设备，如内存，网络通信等。其次这种情况就属于热点代码了，JVM(HotSpot)会采用JIT即时编译技术自动优化  
 5. 如何输出异常堆栈信息  
    解：先输出异常中的message，后面拼接stack信息。message表示出错的原因，stack表示出错的位置  
+6. 异常处理中Error、Exception、Throwable的使用场景  
+   解：Error和Exception继承自Throwable，在SDK开发的过程中一般会使用Throwable接受异常，因为它能捕获到所有的异常，以前遇到过用Exception的时候没有捕获到ClassNotDefine
 
 总结：此次分享准备过程中，发现JDK调试工具在Root用户下访问Yarn用户启动的Java虚拟机，获取不到信息，jstatck获取到的还不全（没有线程描述信息行）
 可以使用 sudo -u yarn /usr/java/jdk1.8.0_181-cloudera/bin/jstack 这种方式获取。
