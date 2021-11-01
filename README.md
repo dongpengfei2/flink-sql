@@ -49,7 +49,12 @@
    
 9. keyBy 之前发生数据倾斜  
    9.1 如果 keyBy 之前就存在数据倾斜，上游算子的某些实例可能处理的数据较多，某些实 例可能处理的数据较少，产生该情况可能是因为数据源的数据本身就不均匀，例如由于某些 原因 Kafka 的 topic 中某些 partition 的数据量较大，某些 partition 的数据量较少。 对于不存在 keyBy 的 Flink 任务也会出现该情况。  
-   9.2 这种情况，需要让 Flink 任务强制进行 shuffle。使用 shuffle、rebalance 或 rescale 算子即可将数据均匀分配，从而解决数据倾斜的问题。
+   9.2 这种情况，需要让 Flink 任务强制进行 shuffle。使用 shuffle、rebalance 或 rescale 算子即可将数据均匀分配，从而解决数据倾斜的问题。  
+   
+10. 采用DataStream做维度打宽  
+    10.1 如果维度表数据量小，延迟性要求不高，可以采用延迟定时调度线程池将维度数据以hashmap的方式缓存在flink中。  
+    10.2 如果维度表数据量大，延迟性要求不高，可以采用RichAsyncFunction直接去查维度表，然后在flink中采用guava cache做个缓存，需要设置过期时间。  
+    10.3 如果维度数据实时性要求高，可以将维度数据存入redis，异步采用canal监听binlog更新维度数据，然后补维的时候直接读redis。  
 
 ### 源码加强
 
