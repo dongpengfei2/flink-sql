@@ -69,7 +69,8 @@
 1. 创建Kafka流表时，不要在建表语句的WITH区段内指定offset起始位点和消费组ID，而应当在任务中实际消费时使用SQL hints指定。消费组ID一般应与对应的`jobName`相同。
 2. TVF中无法使用hints语法，目前只能写一段胶水代码，采用like语法针对每个query创建一个表，然后表中指定group id。
 3. 采用CAST做类型转换时，只能用于事实表，对维表进行转换会报错。
-4. TVF中不能使用WHERE进行过滤，可以采用WITH子句包裹一层进行过滤。
+4. TVF中不能使用WHERE进行过滤，可以采用WITH子句包裹一层进行过滤。  
+5. 采用SQL去重时，over函数中必须采用process time asc排序，这样输出的才是append stream，否则会输出带有主键的upset stream。  
 
 ### Flink SQL 常用配置项
 作业配置项  
